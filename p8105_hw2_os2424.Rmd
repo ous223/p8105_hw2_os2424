@@ -1,5 +1,5 @@
 ---
-title: "p8105_hw1_os2424"
+title: "p8105_hw2_os2424"
 author: "Ou Sha"
 output: github_document
 date: "2023-10-04"
@@ -18,13 +18,13 @@ library(readxl)
 pols <- read.csv("./fivethirtyeight_datasets/pols-month.csv")
 # clean pols-month data
 pols <- janitor::clean_names(pols)
-pols <- pols|>
+pols <- pols |>
   # break up variable mon into integer variables
   separate(mon, c("year", "month", "day"), "-")|>
   #create president variable
-  mutate(president = if_else(prez_gop == 0,'dem','gop'),
+  mutate(president = if_else(prez_gop== 0,'dem','gop'),
          # replace month number with month name
-         month = month.name[as.numeric(month)]) |>
+         month = month.name[as.numeric(month)])|>
   # remove prez_dem, prez_gop, day variables
   dplyr::select(-prez_gop, -prez_dem, -day)
 ```
@@ -34,11 +34,11 @@ pols <- pols|>
 snp <- read.csv("./fivethirtyeight_datasets/snp.csv")
 # clean snp data
 snp <- janitor::clean_names(snp)
-snp <- snp|>
+snp <- snp |>
   # break up variable date into integer variables
   separate(date, c("month", "day", "year"), "/")|>
   # organize year
-  mutate(year = if_else(year <= 15, paste("20", year, sep=""), paste("19", year, sep="")),
+  mutate(year = if_else(year<= 15, paste("20", year, sep=""), paste("19", year, sep="")),
          # replace month number with month name
          month = month.name[as.numeric(month)])|>
   # arrange by year and month
@@ -76,7 +76,7 @@ trash_wheel <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Mr. Tras
 # use reasonable variables
 trash_wheel <- janitor::clean_names(trash_wheel)
 trash_wheel <- trash_wheel |>
-  dplyr::select(-year, -month) |>
+  dplyr::select(-year, -month)|>
   # add new homes_powered variable
   mutate(homes_powered = weight_tons * 500/30)
 ```
@@ -87,7 +87,7 @@ pf_trash <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Professor T
 # use reasonable variables
 pf_trash <- janitor::clean_names(pf_trash)
 pf_trash <- pf_trash |>
-  dplyr::select(-year, -month) |>
+  dplyr::select(-year, -month)|>
   # add new homes_powered variable
   mutate(homes_powered = weight_tons * 500/30)
 ```
@@ -98,7 +98,7 @@ G_trash <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Gwynnda Tras
 # use reasonable variables
 G_trash <- janitor::clean_names(G_trash)
 G_trash <- G_trash |>
-  dplyr::select(-year, -month) |>
+  dplyr::select(-year, -month)|>
   # add new homes_powered variable
   mutate(homes_powered = weight_tons * 500/30)
 ```
@@ -135,5 +135,65 @@ The total number of cigarette butts collected by Gwynnda in July of 2021 is `r c
 
 # Problem 3
 ```{r}
-
+# import MCI basline data
+mci_baseline <- read.csv("./data_mci/MCI_baseline.csv", skip = 1)
+# clean data
+mci_baseline <- janitor::clean_names(mci_baseline)
+mci_baseline <- mci_baseline |>
+  # Ensure that sex and APOE4 carrier status are appropriate encoded
+  mutate(sex = if_else(sex==0, "female", "male"),
+         apoe4 = if_else(apoe4==0, "non-carrier", "carrier"))
+mci_developed <- mci_baseline |>
+  # remove any participants who do not meet the stated inclusion criteria
+    mutate(age_at_onset=if_else(age_at_onset==".", NA, age_at_onset))|>
+    filter(current_age<age_at_onset | is.na(age_at_onset))
 ```
+The important steps in the import process are to skip the first row in the data set, and understand what each number entry for variable sex and apoex represents. The data set has `r nrow(mci_baseline)` observations and `r ncol(mci_baseline)` variables. `age_on_set` is the age at the onset of MCI. 
+
+```{r}
+# find how many participants were recruited
+recruited <- nrow(mci_baseline)
+# find how many participants develop MCI
+Participants_mci <- nrow(mci_developed)
+# find average baseline age
+average_age <- mean(pull(mci_developed, current_age))
+# find proportion of women in the study are apoe4 carriers
+proportion_w <- nrow(filter(mci_developed, sex=="female" & apoe4=="carrier"))/nrow(filter(mci_developed, 
+                                                                                          sex=="female"))
+```
+`r recruited` participants were recruited.\
+`r Participants_mci` of these how many develop MCI.\
+The average baseline age is `r average_age`.\
+Proportion of women in the study are APOE4 carriers is `r proportion_w`
+
+```{r}
+# import MCI amyloid data
+mci_amyloid <- read.csv("./data_mci/mci_amyloid.csv", skip = 1)
+# clean data
+mci_amyloid <- janitor::clean_names(mci_amyloid)
+mci_amyloid<- mci_amyloid |>
+  # Ensure that sex and APOE4 carrier status are appropriate encoded
+  rename(id=study_id, time_0=baseline)|>
+  pivot_longer(
+    time_0:time_8,
+    names_to = "time", 
+    values_to = "ratio")
+```
+The important steps in the import process are to skip the first row in the data set, and rename the study_id variable for further combination, and rename basline varible to time_0 to make the data set tidy. `baseline`(`time_0`) is the time elapsed since the study baseine to the visit where biomarker amyloid was measured. 
+
+```{r}
+#  Check whether some participants appear in only the amyloid datasets
+amyloid_only <- anti_join(mci_amyloid, mci_developed, by="id")
+#  Check whether some participants appear in only the baseline datasets
+baseline_only <- anti_join(mci_developed, mci_amyloid,by="id")
+```
+`r nrow(amyloid_only)/5` participants appear in only the amyloid datasets, and their IDs: `r unique(pull(amyloid_only, "id"))`.\
+`r nrow(baseline_only) ` participants appear in only the baseline datasets, and their IDs: `r pull(baseline_only, "id")`.
+
+```{r}
+# combine the demographic and biomarker datasets
+combined_mci <- inner_join(mci_developed, mci_amyloid, by="id")
+# export combined data
+write.csv(combined_mci, file = "./data_mci/combined data.csv", row.names = TRUE)
+```
+The combined data set has `r nrow(combined_mci)` rows and `r ncol(combined_mci)` columns. Since each id has 5 rows of data, there are `r nrow(combined_mci)/5` observed individuals in total. Age, year of education, apoe4 carrier or not, age at onset, ratio of years of measured amyloid ratio, and tears elapsed since the study baseline to the visit where amyloid was measured are included in the data set.
