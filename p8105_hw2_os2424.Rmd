@@ -155,7 +155,7 @@ The important steps in the import process are to skip the first row in the data 
 
 ```{r}
 # find how many participants were recruited
-recruited <- nrow(mci_baseline)
+recruited <- nrow(mci_developed)
 # find how many participants develop MCI
 Participants_mci <- nrow(filter(mci_developed, !is.na(age_at_onset)))
 # find average baseline age
