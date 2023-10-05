@@ -73,7 +73,7 @@ In unemployment data set, there are `r nrow(unemployment)` observations and `r n
 ```{r}
 # import Mr. Trash wheel data set (skip figure)
 trash_wheel <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Mr. Trash Wheel", "A2:N586")
-# use reasonable variables
+# use reasonable variables and clean data
 trash_wheel <- janitor::clean_names(trash_wheel)
 trash_wheel <- trash_wheel |>
   dplyr::select(-year, -month)|>
@@ -84,18 +84,18 @@ trash_wheel <- trash_wheel |>
 ```{r}
 # import Professor Trash wheel data set (skip figure)
 pf_trash <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Professor Trash Wheel", "A2:M108")
-# use reasonable variables
+# use reasonable variables and clean data
 pf_trash <- janitor::clean_names(pf_trash)
 pf_trash <- pf_trash |>
   dplyr::select(-year, -month)|>
-  # add new homes_powered variable
+  # add = homes_powered variable
   mutate(homes_powered = weight_tons * 500/30)
 ```
 
 ```{r}
 # import Cwynnda Trash wheel data set (skip figure)
 G_trash <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Gwynnda Trash Wheel", "A2:L157")
-# use reasonable variables
+# use reasonable variables and clean data
 G_trash <- janitor::clean_names(G_trash)
 G_trash <- G_trash |>
   dplyr::select(-year, -month)|>
@@ -114,8 +114,11 @@ trash_wheel <- trash_wheel |>
 # combine data
 combined_trash <- bind_rows(trash_wheel, pf_trash, G_trash)
 combined_trash <- combined_trash |>
+  #arrange by date
   arrange(date)|>
+  # separate date variable
   separate(date, c("year", "month", "day" ), "-")|>
+  # organize month variable
   mutate(month= month.name[as.numeric(month)])
 ```
 In Mr. Trash Wheel data set, there are `r nrow(trash_wheel)` observations and `r ncol(trash_wheel)` variables. In Professor Trash Wheel data set, there are `r nrow(pf_trash)` observations and `r ncol(pf_trash)` variables. In Gwynnda Trash Wheel data set, there are `r nrow(G_trash)` observations and `r ncol(G_trash)` variables.\
@@ -154,12 +157,12 @@ The important steps in the import process are to skip the first row in the data 
 # find how many participants were recruited
 recruited <- nrow(mci_baseline)
 # find how many participants develop MCI
-Participants_mci <- nrow(mci_developed)
+Participants_mci <- nrow(filter(mci_developed, !is.na(age_at_onset)))
 # find average baseline age
 average_age <- mean(pull(mci_developed, current_age))
 # find proportion of women in the study are apoe4 carriers
-proportion_w <- nrow(filter(mci_developed, sex=="female" & apoe4=="carrier"))/nrow(filter(mci_developed, 
-                                                                                          sex=="female"))
+proportion_w <- nrow(filter(mci_developed, sex=="female" & apoe4=="carrier"))/ 
+  nrow(filter(mci_developed, sex=="female"))
 ```
 `r recruited` participants were recruited.\
 `r Participants_mci` of these how many develop MCI.\
@@ -174,12 +177,13 @@ mci_amyloid <- janitor::clean_names(mci_amyloid)
 mci_amyloid<- mci_amyloid |>
   # Ensure that sex and APOE4 carrier status are appropriate encoded
   rename(id=study_id, time_0=baseline)|>
+  # make it to long format
   pivot_longer(
     time_0:time_8,
     names_to = "time", 
     values_to = "ratio")
 ```
-The important steps in the import process are to skip the first row in the data set, and rename the study_id variable for further combination, and rename basline varible to time_0 to make the data set tidy. `baseline`(`time_0`) is the time elapsed since the study baseine to the visit where biomarker amyloid was measured. 
+The important steps in the import process are to skip the first row in the data set, and rename the study_id variable for further combination, and rename basline varible to time_0 to make the data set to long format. `baseline`(`time_0`) is the time elapsed since the study baseine to the visit where biomarker amyloid was measured. 
 
 ```{r}
 #  Check whether some participants appear in only the amyloid datasets
@@ -196,4 +200,4 @@ combined_mci <- inner_join(mci_developed, mci_amyloid, by="id")
 # export combined data
 write.csv(combined_mci, file = "./data_mci/combined data.csv", row.names = TRUE)
 ```
-The combined data set has `r nrow(combined_mci)` rows and `r ncol(combined_mci)` columns. Since each id has 5 rows of data, there are `r nrow(combined_mci)/5` observed individuals in total. Age, year of education, apoe4 carrier or not, age at onset, ratio of years of measured amyloid ratio, and tears elapsed since the study baseline to the visit where amyloid was measured are included in the data set.
+The combined data set has `r nrow(combined_mci)` rows and `r ncol(combined_mci)` columns. Since each id has 5 rows of data, there are `r nrow(combined_mci)/5` observed individuals, and `r nrow(combined_mci)` observations in total. Age, year of education, apoe4 carrier or not, age at onset, ratio of years of measured amyloid ratio, and tears elapsed since the study baseline to the visit where amyloid was measured are included in the data set.
