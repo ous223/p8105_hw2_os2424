@@ -115,7 +115,8 @@ trash_wheel <- trash_wheel |>
 combined_trash <- bind_rows(trash_wheel, pf_trash, G_trash)
 combined_trash <- combined_trash |>
   arrange(date)|>
-  separate(date, c("year", "month", "day" ), "-")
+  separate(date, c("year", "month", "day" ), "-")|>
+  mutate(month= month.name[as.numeric(month)])
 ```
 In Mr. Trash Wheel data set, there are `r nrow(trash_wheel)` observations and `r ncol(trash_wheel)` variables. In Professor Trash Wheel data set, there are `r nrow(pf_trash)` observations and `r ncol(pf_trash)` variables. In Gwynnda Trash Wheel data set, there are `r nrow(G_trash)` observations and `r ncol(G_trash)` variables.\
 In combined data, there are `r nrow(combined_trash)` observations and `r ncol(combined_trash)` variables. Key variable `homes_powered` is number of homes powered by the trash, `type` is the source of trash wheel.
@@ -125,12 +126,14 @@ In combined data, there are `r nrow(combined_trash)` observations and `r ncol(co
 weight_trash <- sum(pull(pf_trash, weight_tons))
 # total number of cigarette butts by Gwynnda in July 2021
 G_July <- combined_trash |>
-  filter(type=="Gwynnda Trash Wheel" & month=="July" & year=="2021")
+  filter(type=="Gwynnda Trash Wheel"& month=="July" & year=="2021")
 cig <- sum(pull(G_July, cigarette_butts))
 ```
-The total weight of trash collected by Professor Trash Wheel is `weight_trash`.\
-The total number of cigarette butts collected by Gwynnda in July of 2021 is `cig`.
+The total weight of trash collected by Professor Trash Wheel is `r weight_trash`.\
+The total number of cigarette butts collected by Gwynnda in July of 2021 is `r cig`.
 
 
 # Problem 3
+```{r}
 
+```
