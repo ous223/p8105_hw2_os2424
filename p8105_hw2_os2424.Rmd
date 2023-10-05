@@ -1,0 +1,124 @@
+---
+title: "p8105_hw1_os2424"
+author: "Ou Sha"
+output: github_document
+date: "2023-10-04"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(readxl)
+```
+
+# Problem 1
+```{r}
+# import data set
+pols <- read.csv("./fivethirtyeight_datasets/pols-month.csv")
+# clean pols-month data
+pols <- janitor::clean_names(pols)
+pols <- pols|>
+  # break up variable mon into integer variables
+  separate(mon, c("year", "month", "day"), "-")|>
+  #create president variable
+  mutate(president = if_else(prez_gop == 0,'dem','gop'),
+         # replace month number with month name
+         month = month.name[as.numeric(month)]) |>
+  # remove prez_dem, prez_gop, day variables
+  dplyr::select(-prez_gop, -prez_dem, -day)
+```
+
+```{r}
+# import data set
+snp <- read.csv("./fivethirtyeight_datasets/snp.csv")
+# clean snp data
+snp <- janitor::clean_names(snp)
+snp <- snp|>
+  # break up variable date into integer variables
+  separate(date, c("month", "day", "year"), "/")|>
+  # organize year
+  mutate(year = if_else(year <= 15, paste("20", year, sep=""), paste("19", year, sep="")),
+         # replace month number with month name
+         month = month.name[as.numeric(month)])|>
+  # arrange by year and month
+  arrange(year, month)|>
+  # make year and month leading columns
+  dplyr::select(year, month, everything(), -day)
+```
+
+```{r}
+# import data set
+unemployment <- read.csv("./fivethirtyeight_datasets/unemployment.csv")
+# switch from “wide” to “long” format
+unemployment <- unemployment|>
+  pivot_longer(
+    Jan:Dec,
+    names_to = "month", 
+    values_to = "percent")|>
+  # make variable type the same to merge
+  mutate(year = as.character(Year))|>
+  dplyr::select(year, month, percent)
+# clean data 
+unemployment <- janitor::clean_names(unemployment)
+# merge snp into pols, and merge unemployment into the result
+merged <- left_join(pols, snp, by = join_by(year, month))
+merged <- left_join(merged, unemployment, by = join_by(year, month))
+```
+
+In pols data set, there are `r nrow(pols)` observations and `r ncol(pols)` variables. It includes the number of republican and democratic governors, senators, and representatives on the associated date. Whether the president was democratic or republican onthe associated date. \
+In snp data set, there are `r nrow(snp)` observations and `r ncol(snp)` variables. It includes the closing values of the S&P stock index on the associated date ranging from `r range(snp$year)[1]` to `r range(snp$year)[2]`.\
+In unemployment data set, there are `r nrow(unemployment)` observations and `r ncol(unemployment)` variables. It indicates the percentage of unemployment every month ranging from `r range(unemployment$year)[1]` to `r range(unemployment$year)[2]`.
+
+
+
+# Problem 2
+```{r}
+# import Mr. Trash wheel data set (skip figure)
+trash_wheel <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Mr. Trash Wheel", "A2:N586")
+# use reasonable variables
+trash_wheel <- janitor::clean_names(trash_wheel)
+trash_wheel <- trash_wheel |>
+  dplyr::select(-year, -month) |>
+  # add new homes_powered variable
+  mutate(homes_powered = weight_tons * 500/30)
+```
+
+```{r}
+# import Professor Trash wheel data set (skip figure)
+pf_trash <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Professor Trash Wheel", "A2:M108")
+# use reasonable variables
+pf_trash <- janitor::clean_names(pf_trash)
+pf_trash <- pf_trash |>
+  dplyr::select(-year, -month) |>
+  # add new homes_powered variable
+  mutate(homes_powered = weight_tons * 500/30)
+```
+
+```{r}
+# import Cwynnda Trash wheel data set (skip figure)
+G_trash <- read_excel("./202309 Trash Wheel Collection Data.xlsx", "Gwynnda Trash Wheel", "A2:L157")
+# use reasonable variables
+G_trash <- janitor::clean_names(G_trash)
+G_trash <- G_trash |>
+  dplyr::select(-year, -month) |>
+  # add new homes_powered variable
+  mutate(homes_powered = weight_tons * 500/30)
+```
+
+```{r}
+# add new variable to track trash wheel type
+G_trash <- G_trash |>
+  mutate(type = "Gwynnda Trash Wheel")
+pf_trash <- pf_trash |>
+  mutate(type = "Professor Trash Wheel")
+trash_wheel <- trash_wheel |>
+  mutate(type = "Mr. Trash Wheel")
+# combine data
+combined_trash <- bind_rows(trash_wheel, pf_trash, G_trash)
+combined_trash <- combined_trash |>
+  arrange(date)
+```
+
+In Mr. Trash Wheel data set, there are `r nrow(trash_wheel)` observations and `r ncol(trash_wheel)` variables. In Professor Trash Wheel data set, there are `r nrow(pf_trash)` observations and `r ncol(pf_trash)` variables. In Gwynnda Trash Wheel data set, there are `r nrow(G_trash)` observations and `r ncol(G_trash)` variables.\
+In combined data, there are `r nrow(combined_trash)` observations and `r ncol(combined_trash)` variables. Key variable `homes_powered` is number of homes powered by the trash, `type` is the source of trash wheel.
